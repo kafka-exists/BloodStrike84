@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.BSEsp" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#00E58A</item>
+        <item name="colorAccent">#00E58A</item>
+        <item name="android:windowBackground">#0B0F12</item>
+    </style>
+</resources>
