@@ -23,6 +23,7 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.view.WindowManager
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,11 @@ class EspService : Service() {
     private var capW = 0
     private var capH = 0
 
+    override fun onCreate() {
+        super.onCreate()
+        Crash.install(this)
+    }
+
     override fun onBind(i: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -70,7 +76,13 @@ class EspService : Service() {
         Cfg.load(this)
         buildOverlay()
         buildPanel()
-        startProjection(intent)
+
+        try {
+            startProjection(intent)
+        } catch (t: Throwable) {
+            overlay?.statusText = "setup failed: ${t.javaClass.simpleName}"
+            overlay?.postInvalidate()
+        }
         return START_NOT_STICKY
     }
 
@@ -93,7 +105,8 @@ class EspService : Service() {
     }
 
     private fun buildOverlay() {
-        val o = OverlayView(this)
+        val themed = ContextThemeWrapper(this, R.style.Theme_BSEsp)
+        val o = OverlayView(themed)
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -108,7 +121,8 @@ class EspService : Service() {
     }
 
     private fun buildPanel() {
-        val p = PanelView(this, wm)
+        val themed = ContextThemeWrapper(this, R.style.Theme_BSEsp)
+        val p = PanelView(themed, wm)
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -160,13 +174,9 @@ class EspService : Service() {
         overlay?.statusText = "loading model…"
         detector = Detector(this)
         scope.launch {
-            val ok = detector?.init() == true
-            val be = detector?.backend ?: "none"
+            val ok = try { detector?.init() == true } catch (t: Throwable) { false }
             Handler(mainLooper).post {
-                overlay?.statusText = if (ok) "backend: $be" else "model download failed"
-                if (ok) Handler(mainLooper).postDelayed({
-                    overlay?.statusText = null
-                }, 2500)
+                overlay?.statusText = if (ok) null else "model download failed"
             }
         }
     }
