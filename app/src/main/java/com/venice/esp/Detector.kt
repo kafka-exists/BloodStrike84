@@ -19,32 +19,25 @@ class Detector(private val ctx: Context) {
     private val lock = Mutex()
     @Volatile var ready = false
         private set
-    @Volatile var backend = "none"
+    @Volatile var backend = "cpu"
 
     suspend fun init(): Boolean = withContext(Dispatchers.IO) {
-        val f = modelFile() ?: return@withContext false
-
-        for (delegate in listOf(BaseOptions.Delegate.NNAPI, BaseOptions.Delegate.CPU)) {
-            try {
-                val base = BaseOptions.builder()
-                    .setNumThreads(4)
-                    .setDelegate(delegate)
-                    .build()
-                val opts = ObjectDetector.ObjectDetectorOptions.builder()
-                    .setBaseOptions(base)
-                    .setMaxResults(12)
-                    .setScoreThreshold(0.30f)
-                    .build()
-                od = ObjectDetector.createFromFileAndOptions(f, opts)
-                backend = delegate.name
-                ready = true
-                return@withContext true
-            } catch (t: Throwable) {
-                od?.close()
-                od = null
-            }
+        try {
+            val f = modelFile() ?: return@withContext false
+            val base = BaseOptions.builder().setNumThreads(4).build()
+            val opts = ObjectDetector.ObjectDetectorOptions.builder()
+                .setBaseOptions(base)
+                .setMaxResults(12)
+                .setScoreThreshold(0.30f)
+                .build()
+            od = ObjectDetector.createFromFileAndOptions(f, opts)
+            ready = true
+            true
+        } catch (t: Throwable) {
+            od?.close()
+            od = null
+            false
         }
-        false
     }
 
     private fun modelFile(): File? = try {
@@ -75,7 +68,6 @@ class Detector(private val ctx: Context) {
         od?.close()
         od = null
         ready = false
-        backend = "none"
     }
 
     companion object {
