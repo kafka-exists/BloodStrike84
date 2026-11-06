@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         Cfg.load(this)
+        Crash.install(this)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -92,10 +93,11 @@ class MainActivity : AppCompatActivity() {
             status.text = "Stopped."
         })
 
-        root.addView(TextView(this).apply {
-            text = "\nIf boxes lag behind enemies, raise capture FPS and keep fast mode on."
-            setTextColor(0xFF5E6E7A.toInt())
-            textSize = 12f
+        root.addView(btn("Clear crash log") {
+            Crash.clear(this)
+            status.text = "Log cleared."
+            status.textSize = 15f
+            status.setTextColor(0xFF8FA3B0.toInt())
         })
 
         setContentView(ScrollView(this).apply { addView(root) })
@@ -104,6 +106,11 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
+        Crash.read(this)?.let {
+            status.text = it.take(900)
+            status.textSize = 9f
+            status.setTextColor(0xFFFF6B6B.toInt())
+        }
     }
 
     private fun refresh() {
